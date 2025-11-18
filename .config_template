@@ -1,6 +1,7 @@
 {
     "module_name": "module_creator_core",
     "path": {
-        "data": "./project/data/module_creator_core"
+        "data": "./project/data/module_creator_core",
+        "module_templates": "./project/data/module_creator_core/module_templates.yaml"
     }
 }

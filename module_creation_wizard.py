@@ -30,12 +30,12 @@ def run_module_creation_wizard(
     """
 
     cm = ConfigManager()
-    main_cfg = cm.config.main_config
-    mod_tmpls = yaml_reading.read_yaml(main_cfg.path.module_templates)
+    config = cm.config.module_creator_core
+    mod_tmpls = yaml_reading.read_yaml(config.path.module_templates)
     if mod_tmpls is None:
         logger.error("No module templates configuration found.")
         return
-    types: list[str] = list(main_cfg.module_types_singular)
+    types: list[str] = list(config.module_types_singular)
     if not types:
         logger.error("No module types configured in main_config.module_types_singular")
         return
