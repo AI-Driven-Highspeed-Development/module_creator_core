@@ -16,11 +16,12 @@ from cores.github_api_core.api import GithubApi
 from cores.modules_controller_core.module_types import ModuleTypes
 
 @dataclass
-class ModuleParams:
+class ModuleCreationParams:
     module_name: str
     module_type: str  # core/manager/plugin/util/mcp
     repo_options: Optional[RepoCreationOptions] = None
     template_url: Optional[str] = None
+    shows_in_workspace: Optional[bool] = None
 
 
 class ModuleCreator:
@@ -31,7 +32,7 @@ class ModuleCreator:
         self.config = self.cm.config.module_creator_core
         self.logger = Logger(name=__class__.__name__)
 
-    def create(self, params: ModuleParams) -> Path:
+    def create(self, params: ModuleCreationParams) -> Path:
         target = self._prepare_target_path(params)
         api = GithubApi()
 
@@ -54,7 +55,7 @@ class ModuleCreator:
 
 
     # ---------------- Internal helpers ----------------
-    def _prepare_target_path(self, params: ModuleParams) -> Path:
+    def _prepare_target_path(self, params: ModuleCreationParams) -> Path:
         # Determine plural directory name from config mapping with safe fallbacks
         modules_types = ModuleTypes()
         directory_name = modules_types.get_module_type(params.module_type).plural_name
@@ -67,7 +68,7 @@ class ModuleCreator:
         target.mkdir(parents=True, exist_ok=True)
         return target
 
-    def _write_init_yaml(self, target: Path, params: ModuleParams) -> None:
+    def _write_init_yaml(self, target: Path, params: ModuleCreationParams) -> None:
         init_path = target / "init.yaml"
 
         relative_folder = target.relative_to(Path.cwd())
@@ -87,6 +88,15 @@ class ModuleCreator:
             "type": params.module_type,
             "requirements": [],  # populated manually by user if needed
         }
+
+        # Check if we need to override the default visibility
+        module_types = ModuleTypes()
+        mt = module_types.get_module_type(params.module_type)
+        default_visibility = mt.shows_in_workspace
+        
+        if params.shows_in_workspace is not None and params.shows_in_workspace != default_visibility:
+             data["shows_in_workspace"] = params.shows_in_workspace
+
         if repo_url:
             data["repo_url"] = repo_url
         
@@ -94,7 +104,7 @@ class ModuleCreator:
             yaml.safe_dump(data, handle, allow_unicode=True, sort_keys=False)
         self.logger.info(f"Wrote init.yaml at {init_path}")
 
-    def _write_placeholder_files(self, target: Path, params: ModuleParams) -> None:
+    def _write_placeholder_files(self, target: Path, params: ModuleCreationParams) -> None:
         # Basic Python package structure
         init_py = target / "__init__.py"
         if not init_py.exists():

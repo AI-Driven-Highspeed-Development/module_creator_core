@@ -14,7 +14,7 @@ from utils.logger_util.logger import Logger
 from cores.exceptions_core.adhd_exceptions import ADHDError
 from cores.yaml_reading_core.yaml_reading import YamlReadingCore as yaml_reading
 
-from .module_creator import ModuleCreator, ModuleParams
+from .module_creator import ModuleCreator, ModuleCreationParams
 
 
 def run_module_creation_wizard(
@@ -97,7 +97,7 @@ def run_module_creation_wizard(
         return
 
     # 4) Create the module
-    params = ModuleParams(
+    params = ModuleCreationParams(
         module_name=module_name,
         module_type=module_type,
         repo_options=repo_options,
