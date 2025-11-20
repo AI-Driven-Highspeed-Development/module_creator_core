@@ -13,6 +13,7 @@ from cores.questionary_core.questionary_core import QuestionaryCore
 from utils.logger_util.logger import Logger
 from cores.exceptions_core.adhd_exceptions import ADHDError
 from cores.yaml_reading_core.yaml_reading import YamlReadingCore as yaml_reading
+from cores.modules_controller_core.module_types import ModuleTypes
 
 from .module_creator import ModuleCreator, ModuleCreationParams
 
@@ -35,9 +36,10 @@ def run_module_creation_wizard(
     if mod_tmpls is None:
         logger.error("No module templates configuration found.")
         return
-    types: list[str] = list(config.module_types_singular)
+
+    types: list[str] = ModuleTypes().get_all_type_names()
     if not types:
-        logger.error("No module types configured in main_config.module_types_singular")
+        logger.error("No module types found in ModuleTypes registry.")
         return
 
     # 1) Ask for module name and type
@@ -70,9 +72,7 @@ def run_module_creation_wizard(
             # If there's only one template, use it directly without asking.
             only_template = templates[0]
             logger.info(
-                "Single module template detected; using '%s' (%s) automatically.",
-                only_template.name,
-                only_template.url,
+                f"Single module template detected; using '{only_template.name}' ({only_template.url}) automatically."
             )
             template_url = only_template.url
         else:
