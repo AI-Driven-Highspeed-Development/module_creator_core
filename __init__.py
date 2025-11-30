@@ -15,15 +15,17 @@ from utils.logger_util.logger import Logger
 logger = Logger(name="ModuleCreatorInit")
 
 dest_dir = Path("./project/data/module_creator_core")
+if dest_dir.exists():
+    shutil.rmtree(dest_dir)
 dest_dir.mkdir(parents=True, exist_ok=True)
+
 dest_path = dest_dir / Path(TEMPLATE_PATH).name
-if not dest_path.exists():
-    src = Path(__file__).parent / TEMPLATE_PATH
-    if not src.exists():
-        raise FileNotFoundError(f"Bundled template not found: {src}")
-    try:
-        shutil.copyfile(src, dest_path)
-    except Exception as e:
-        raise IOError(f"Failed to copy template to {dest_path}: {e}") from e
+src = Path(__file__).parent / TEMPLATE_PATH
+if not src.exists():
+    raise FileNotFoundError(f"Bundled template not found: {src}")
+try:
+    shutil.copyfile(src, dest_path)
+except Exception as e:
+    raise IOError(f"Failed to copy template to {dest_path}: {e}") from e
 
 logger.info(f"Module templates ensured at: {dest_path}")
