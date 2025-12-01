@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 import shutil
+import json
 from pathlib import Path
 from typing import Optional
 import yaml
@@ -109,7 +110,20 @@ class ModuleCreator:
         init_py = target / "__init__.py"
         if not init_py.exists():
             init_py.write_text(f'"""{params.module_name} {params.module_type} module."""\n', encoding="utf-8")
+        
         readme = target / "README.md"
         if not readme.exists():
             readme.write_text(f"# {params.module_name}\n\nType: {params.module_type}\n", encoding="utf-8")
+            
+        config_template = target / ".config_template"
+        if not config_template.exists():
+            config_data = {
+                "module_name": params.module_name,
+                "path": {
+                    "data": f"./project/data/{params.module_name}"
+                }
+            }
+            with open(config_template, "w", encoding="utf-8") as f:
+                json.dump(config_data, f, indent=4)
+
         self.logger.info(f"Created module files in {target}")
