@@ -1,8 +1,7 @@
 from dataclasses import dataclass
-import shutil
 import json
 from pathlib import Path
-from typing import Optional
+from typing import List, Optional
 import yaml
 
 from managers.config_manager import ConfigManager
@@ -16,6 +15,7 @@ from cores.creator_common_core.creator_common_core import (
 from cores.github_api_core.api import GithubApi
 from cores.modules_controller_core.module_types import ModuleTypes
 from cores.module_creator_core.mcps_mod import McpModCreator
+from cores.yaml_reading_core.yaml_reading import YamlReadingCore
 
 @dataclass
 class ModuleCreationParams:
@@ -58,6 +58,9 @@ class ModuleCreator:
                 options=params.repo_options,
                 logger=self.logger,
             )
+            # Add the new module's repo URL to the project's init.yaml
+            if params.repo_options.repo_url:
+                self._add_module_to_project_init(params.repo_options.repo_url)
         return target
 
 
@@ -133,3 +136,32 @@ class ModuleCreator:
                 json.dump(config_data, f, indent=4)
 
         self.logger.info(f"Created module files in {target}")
+
+    def _add_module_to_project_init(self, repo_url: str) -> None:
+        """Add a module's repo URL to the project's root init.yaml modules list."""
+        project_init_path = Path.cwd() / "init.yaml"
+        if not project_init_path.exists():
+            self.logger.warning(f"Project init.yaml not found at {project_init_path}, skipping module registration")
+            return
+
+        try:
+            yf = YamlReadingCore.read_yaml(project_init_path)
+            if not yf:
+                self.logger.warning("Failed to read project init.yaml")
+                return
+            
+            data = yf.to_dict()
+            modules: List[str] = data.get("modules", [])
+            if not isinstance(modules, list):
+                modules = []
+            
+            # Check if the URL is already in the list (avoid duplicates)
+            if repo_url not in modules:
+                modules.append(repo_url)
+                data["modules"] = modules
+                YamlReadingCore.write_yaml(project_init_path, data)
+                self.logger.info(f"Added {repo_url} to project init.yaml modules list")
+            else:
+                self.logger.info(f"Module {repo_url} already in project init.yaml")
+        except Exception as e:
+            self.logger.warning(f"Failed to update project init.yaml: {e}")
