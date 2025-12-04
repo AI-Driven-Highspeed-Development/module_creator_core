@@ -50,7 +50,8 @@ def main() -> None:
                 "type": "stdio",
                 "command": ".venv/bin/python",
                 "args": ["-m", module_path],
-                "cwd": "./"
+                "cwd": "./",
+                "autoStart": true
             }}
             
             # Write back with proper formatting

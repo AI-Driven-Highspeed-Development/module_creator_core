@@ -18,5 +18,8 @@ current_dir = os.path.dirname(os.path.abspath(__file__))
 project_root = os.getcwd()  # Use current working directory as project root
 sys.path.insert(0, project_root)
 
-from mcps.{module_name}.refresh import main as mcp_refresh_main
-mcp_refresh_main()
+from mcps.{module_name}.{module_name}_server import mcp
+
+__all__ = [
+    'mcp'
+]
