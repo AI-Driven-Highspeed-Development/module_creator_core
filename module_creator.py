@@ -15,6 +15,7 @@ from cores.creator_common_core.creator_common_core import (
 )
 from cores.github_api_core.api import GithubApi
 from cores.modules_controller_core.module_types import ModuleTypes
+from cores.module_creator_core.mcps_mod import McpModCreator
 
 @dataclass
 class ModuleCreationParams:
@@ -43,6 +44,11 @@ class ModuleCreator:
 
         self._write_init_yaml(target, params)
         self._write_placeholder_files(target, params)
+        
+        # Handle module-type-specific files
+        if params.module_type == "mcp":
+            mcp_creator = McpModCreator(logger=self.logger)
+            mcp_creator.create_mcp_files(target, params.module_name)
 
         if params.repo_options:
             create_remote_repo(
