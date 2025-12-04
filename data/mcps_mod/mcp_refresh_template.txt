@@ -51,7 +51,7 @@ def main() -> None:
                 "command": ".venv/bin/python",
                 "args": ["-m", module_path],
                 "cwd": "./",
-                "autoStart": true
+                "autoStart": True
             }}
             
             # Write back with proper formatting
