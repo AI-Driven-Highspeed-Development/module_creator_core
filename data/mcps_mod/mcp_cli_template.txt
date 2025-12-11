@@ -8,6 +8,13 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
+import sys
+
+# Ensure project root is in sys.path for imports
+current_dir = os.path.dirname(os.path.abspath(__file__))
+project_root = os.getcwd()
+sys.path.insert(0, project_root)
 
 from mcps.{module_name}.{module_base}_controller import {module_class}Controller
 from managers.cli_manager import CLIManager, ModuleRegistration, Command, CommandArg
