@@ -1,0 +1,68 @@
+```plaintext
+"""CLI commands and registration for {module_name}.
+
+Exposes MCP tools as CLI commands for command-line usage.
+"""
+
+from __future__ import annotations
+
+import argparse
+import json
+
+from mcps.{module_name}.{module_base}_controller import {module_class}Controller
+from managers.cli_manager import CLIManager, ModuleRegistration, Command, CommandArg
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Controller Access
+# ─────────────────────────────────────────────────────────────────────────────
+
+_controller: {module_class}Controller | None = None
+
+
+def _get_controller() -> {module_class}Controller:
+    """Get or create the controller instance."""
+    global _controller
+    if _controller is None:
+        _controller = {module_class}Controller()
+    return _controller
+
+
+def _print_result(result: dict) -> int:
+    """Print result as JSON and return exit code."""
+    print(json.dumps(result, indent=2, default=str))
+    return 0 if result.get("success", True) else 1
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Handler Functions
+# ─────────────────────────────────────────────────────────────────────────────
+
+def example_command(args: argparse.Namespace) -> int:
+    """Example handler - delegates to controller method."""
+    result = _get_controller().example_method()
+    return _print_result(result)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# CLI Registration
+# ─────────────────────────────────────────────────────────────────────────────
+
+def register_cli() -> None:
+    """Register {module_name} commands with CLIManager."""
+    cli = CLIManager()
+    cli.register_module(ModuleRegistration(
+        module_name="{module_name}",
+        short_name="{short_name}",
+        description="{module_description}",
+        commands=[
+            Command(
+                name="example",
+                help="Example command - replace with actual commands",
+                handler="mcps.{module_name}.{module_base}_cli:example_command",
+            ),
+            # Add more commands here matching your MCP tools
+        ],
+    ))
+
+```
