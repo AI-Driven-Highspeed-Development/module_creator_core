@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from utils.logger_util.logger import Logger
+from logger_util import Logger
 
 # Template directory relative to this file
 TEMPLATE_DIR = Path(__file__).parent / "data" / "mcps_mod"

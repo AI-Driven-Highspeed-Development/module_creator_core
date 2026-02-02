@@ -1,0 +1,34 @@
+# {module_name} Instructions
+
+## Overview
+
+This file contains instructions for AI agents working with the `{module_name}` {module_type} module.
+
+## Module Purpose
+
+{description}
+
+## Key Components
+
+- `{module_name}.py` - Main module implementation
+- `__init__.py` - Module exports
+- `.config_template` - Configuration schema
+
+## Usage Patterns
+
+### Basic Usage
+
+```python
+from {module_name} import {class_name}
+
+instance = {class_name}()
+```
+
+## Common Tasks
+
+1. **Task 1**: Description of common task
+2. **Task 2**: Description of another common task
+
+## Notes
+
+- Add module-specific notes for AI agents here

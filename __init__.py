@@ -1,31 +1,52 @@
+"""module_creator_core - Module creation and scaffolding.
+
+Provides ModuleCreator for creating new ADHD Framework modules.
+"""
+
 from __future__ import annotations
 from pathlib import Path
 import shutil
-import os
-import sys
-
-# Add path handling to work from the new nested directory structure
-current_dir = os.path.dirname(os.path.abspath(__file__))
-project_root = os.getcwd()  # Use current working directory as project root
-sys.path.insert(0, project_root)
+from functools import lru_cache
 
 TEMPLATE_PATH = "data/module_templates.yaml"
 
-from utils.logger_util.logger import Logger
-logger = Logger(name="ModuleCreatorInit")
 
-dest_dir = Path("./project/data/module_creator_core")
-if dest_dir.exists():
-    shutil.rmtree(dest_dir)
-dest_dir.mkdir(parents=True, exist_ok=True)
+def _get_dest_dir() -> Path:
+    """Get the destination directory for template files, creating if needed."""
+    dest_dir = Path("./project/data/module_creator_core")
+    dest_dir.mkdir(parents=True, exist_ok=True)
+    return dest_dir
 
-dest_path = dest_dir / Path(TEMPLATE_PATH).name
-src = Path(__file__).parent / TEMPLATE_PATH
-if not src.exists():
-    raise FileNotFoundError(f"Bundled template not found: {src}")
-try:
-    shutil.copyfile(src, dest_path)
-except Exception as e:
-    raise IOError(f"Failed to copy template to {dest_path}: {e}") from e
 
-logger.info(f"Module templates ensured at: {dest_path}")
+def ensure_template() -> Path:
+    """Ensure the module template file is copied to the project data directory.
+    
+    This is called lazily when templates are actually needed, not on import.
+    """
+    from logger_util import Logger
+    logger = Logger(name="ModuleCreatorInit")
+    
+    dest_dir = _get_dest_dir()
+    dest_path = dest_dir / Path(TEMPLATE_PATH).name
+    src = Path(__file__).parent / TEMPLATE_PATH
+    
+    if not src.exists():
+        raise FileNotFoundError(f"Bundled template not found: {src}")
+    try:
+        shutil.copyfile(src, dest_path)
+    except Exception as e:
+        raise IOError(f"Failed to copy template to {dest_path}: {e}") from e
+    
+    logger.info(f"Module templates ensured at: {dest_path}")
+    return dest_path
+
+
+@lru_cache(maxsize=1)
+def ensure_templates() -> None:
+    """Ensure all template files are copied. Called lazily, not on import."""
+    ensure_template()
+
+
+from .module_creator import ModuleCreator, ModuleCreationParams, validate_module_name
+
+__all__ = ["ModuleCreator", "ModuleCreationParams", "validate_module_name", "ensure_templates"]

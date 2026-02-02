@@ -1,0 +1,36 @@
+"""{module_name} - Main module implementation.
+
+This is the main file for the {module_name} {module_type} module.
+Add your implementation here.
+"""
+
+from __future__ import annotations
+
+
+class {class_name}:
+    """{class_name} - Main class for {module_name}.
+    
+    TODO: Add class documentation.
+    """
+    
+    def __init__(self) -> None:
+        """Initialize {class_name}."""
+        pass
+    
+    def example_method(self) -> str:
+        """Example method - replace with actual implementation.
+        
+        Returns:
+            A greeting string.
+        """
+        return "Hello from {module_name}!"
+
+
+def main() -> None:
+    """Module entry point for testing."""
+    instance = {class_name}()
+    print(instance.example_method())
+
+
+if __name__ == "__main__":
+    main()

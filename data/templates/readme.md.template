@@ -1,0 +1,40 @@
+# {module_name}
+
+**Type:** {module_type}
+
+## Description
+
+{description}
+
+## Installation
+
+This module is part of an ADHD Framework project. It's automatically installed via UV workspace.
+
+```bash
+# From project root
+uv sync
+```
+
+## Usage
+
+```python
+from {module_name} import {class_name}
+
+instance = {class_name}()
+result = instance.example_method()
+```
+
+## Development
+
+```bash
+# Run module directly for testing
+uv run python -m {module_type_plural}.{module_name}.{module_name}
+```
+
+## Configuration
+
+The module can be configured via `.config` file in the project root. See `.config_template` for available options.
+
+## License
+
+[Add license information here]

@@ -1,0 +1,11 @@
+"""{module_name} - {module_type} module.
+
+{description}
+"""
+
+from __future__ import annotations
+
+# Export public API here
+# from .{module_name} import SomeClass, some_function
+
+__all__: list[str] = []

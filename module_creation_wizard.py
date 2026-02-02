@@ -3,18 +3,14 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Optional
 
-from managers.config_manager import ConfigManager
-from cores.creator_common_core.creator_common_core import (
+from creator_common_core import (
     RepoCreationOptions,
-    TemplateInfo,
-    list_templates,
     to_snake_case,
 )
-from cores.questionary_core.questionary_core import QuestionaryCore
-from utils.logger_util.logger import Logger
-from cores.exceptions_core.adhd_exceptions import ADHDError
-from cores.yaml_reading_core.yaml_reading import YamlReadingCore as yaml_reading
-from cores.modules_controller_core.module_types import ModuleTypes
+from questionary_core import QuestionaryCore
+from logger_util import Logger
+from exceptions_core import ADHDError
+from .module_types import ModuleTypes
 
 from .module_creator import ModuleCreator, ModuleCreationParams
 
@@ -24,7 +20,9 @@ class ModuleWizardArgs:
     """Pre-filled arguments for module creation wizard."""
     name: Optional[str] = None
     module_type: Optional[str] = None
-    template: Optional[str] = None
+    description: Optional[str] = None  # Optional module description
+    create_instructions: Optional[bool] = None  # Whether to create .instructions.md
+    # DEPRECATED_P3: template no longer used - embedded templates only
     create_repo: Optional[bool] = None  # None = ask, True = yes, False = no
     owner: Optional[str] = None
     visibility: Optional[str] = None  # "public" or "private"
@@ -36,11 +34,11 @@ def run_module_creation_wizard(
     logger: Logger,
     prefilled: Optional[ModuleWizardArgs] = None,
 ) -> None:
-    """Interactive flow to scaffold a new module.
+    """Interactive flow to scaffold a new module using embedded templates.
 
-    - Prompts for module name and type (from main_config.module_types_singular)
-    - Optionally creates a GitHub repo similar to project creation flow
-    - Generates a minimal module skeleton on disk
+    - Prompts for module name and type
+    - Optionally creates a GitHub repo
+    - Generates module files from embedded templates
     
     Args:
         prompter: QuestionaryCore instance for interactive prompts
@@ -49,13 +47,6 @@ def run_module_creation_wizard(
     """
     if prefilled is None:
         prefilled = ModuleWizardArgs()
-
-    cm = ConfigManager()
-    config = cm.config.module_creator_core
-    mod_tmpls = yaml_reading.read_yaml(config.path.module_templates)
-    if mod_tmpls is None:
-        logger.error("No module templates configuration found.")
-        return
 
     types: list[str] = ModuleTypes().get_all_type_names()
     if not types:
@@ -110,68 +101,38 @@ def run_module_creation_wizard(
             if confirm != "Yes, I understand":
                 logger.info("Core creation cancelled. Please restart and select a different module type.")
                 return
+        
+        # Optional description
+        description = prefilled.description or ""
+        
+        # Ask about instructions file
+        create_instructions = prefilled.create_instructions
+        if create_instructions is None:
+            create_instr_choice = prompter.multiple_choice(
+                "Create instructions file (.instructions.md) for AI agents?",
+                ["No", "Yes"],
+                default="No",
+            )
+            create_instructions = create_instr_choice == "Yes"
+
     except KeyboardInterrupt:
         logger.info("Input cancelled. Exiting.")
         return
 
-    # 2) Pick a module template (optional)
-    template_url: Optional[str] = None
-    try:
-        templates: list[TemplateInfo] = list_templates(mod_tmpls.to_dict())
-        
-        # Check if prefilled template matches
-        if prefilled.template:
-            # Try to match by name or URL
-            matched = None
-            for t in templates:
-                if t.name == prefilled.template or t.url == prefilled.template:
-                    matched = t
-                    break
-            if matched:
-                template_url = matched.url
-                logger.info(f"Using template: {matched.name}")
-            elif prefilled.template.startswith(("http://", "https://", "git@")):
-                # Assume it's a direct URL
-                template_url = prefilled.template
-                logger.info(f"Using template URL: {template_url}")
-            else:
-                logger.warning(f"Template '{prefilled.template}' not found. Proceeding with blank module.")
-        elif not templates:
-            logger.info("No module templates configured; proceeding with blank module.")
-        elif len(templates) == 1:
-            # If there's only one template, use it directly without asking.
-            only_template = templates[0]
-            logger.info(
-                f"Single module template detected; using '{only_template.name}' ({only_template.url}) automatically."
-            )
-            template_url = only_template.url
-        else:
-            tmpl_lookup = {f"{t.name} — {t.description or t.url}": t for t in templates}
-            tmpl_labels = list(tmpl_lookup.keys())
-            selected_label = prompter.multiple_choice(
-                "Select a module template",
-                ["Blank", *tmpl_labels],
-                default="Blank",
-            )
-            if selected_label != "Blank":
-                template_url = tmpl_lookup[selected_label].url
-    except KeyboardInterrupt:
-        logger.info("Template selection cancelled. Exiting.")
-        return
-
-    # 3) Ask if a repo should be created (owner/visibility)
+    # 2) Ask if a repo should be created (owner/visibility)
     try:
         repo_options = _prompt_repo_creation(prompter, logger, prefilled)
     except KeyboardInterrupt:
         logger.info("Repository creation cancelled. Exiting.")
         return
 
-    # 4) Create the module
+    # 3) Create the module using embedded templates
     params = ModuleCreationParams(
         module_name=module_name,
         module_type=module_type,
+        description=description,
         repo_options=repo_options,
-        template_url=template_url,
+        create_instructions=create_instructions,
     )
     creator = ModuleCreator()
     try:
@@ -181,6 +142,9 @@ def run_module_creation_wizard(
         return
 
     logger.info(f"✅ Module created at: {dest}")
+    logger.info("Next steps:")
+    logger.info("  uv sync  # to install the new module")
+    logger.info("  # Then import from your code: from {module_name} import ...")
 
 
 def _prompt_repo_creation(
@@ -188,7 +152,7 @@ def _prompt_repo_creation(
     logger: Logger,
     prefilled: ModuleWizardArgs,
 ) -> Optional[RepoCreationOptions]:
-    from cores.github_api_core.api import GithubApi
+    from github_api_core import GithubApi
 
     # Check if repo creation is pre-determined
     if prefilled.create_repo is False:
