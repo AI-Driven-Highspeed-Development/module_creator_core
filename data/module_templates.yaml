@@ -1,6 +1,0 @@
-# DEPRECATED_P3: External templates no longer used.
-# Templates are now embedded directly in module_creator.py as Python string constants.
-# This file is kept for backward compatibility but is not used by the wizard.
-default:
-  description: Default Module Template (DEPRECATED - now embedded)
-  url: https://github.com/AI-Driven-Highspeed-Development/Default-Module-Template.git

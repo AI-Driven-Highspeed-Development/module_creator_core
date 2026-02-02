@@ -21,16 +21,6 @@ Repository = "https://github.com/AI-Driven-Highspeed-Development/module_creator_
 type = "core"
 layer = "dev"
 
-[tool.uv.sources]
-config-manager = { workspace = true }
-logger-util = { workspace = true }
-creator-common-core = { workspace = true }
-exceptions-core = { workspace = true }
-github-api-core = { workspace = true }
-modules-controller-core = { workspace = true }
-questionary-core = { workspace = true }
-yaml-reading-core = { workspace = true }
-
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
