@@ -12,7 +12,6 @@ from creator_common_core import (
     RepoCreationOptions,
     create_remote_repo,
 )
-from github_api_core import GithubApi
 from modules_controller_core import ModuleTypes
 from .mcps_mod import McpModCreator
 
@@ -130,9 +129,7 @@ class ModuleCreator:
 
         # Create remote repo if requested
         if params.repo_options:
-            api = GithubApi()
             create_remote_repo(
-                api=api,
                 repo_name=params.module_name,
                 local_path=target,
                 options=params.repo_options,
