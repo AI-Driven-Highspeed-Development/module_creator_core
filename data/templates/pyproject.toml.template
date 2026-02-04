@@ -3,6 +3,10 @@ name = "{module_name}"
 version = "0.1.0"
 description = "{description}"
 requires-python = ">=3.11"
+dependencies = []
+
+[tool.adhd]
+{adhd_section}
 
 [build-system]
 requires = ["hatchling"]

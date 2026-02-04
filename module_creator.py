@@ -12,7 +12,7 @@ from creator_common_core import (
     RepoCreationOptions,
     create_remote_repo,
 )
-from modules_controller_core import ModuleTypes
+from modules_controller_core import MODULE_FOLDERS
 from .mcps_mod import McpModCreator
 
 
@@ -24,6 +24,18 @@ from .mcps_mod import McpModCreator
 # Valid module name pattern: lowercase letters, numbers, underscores
 # Must start with letter, can't end with underscore
 MODULE_NAME_PATTERN = re.compile(r"^[a-z][a-z0-9_]*[a-z0-9]$|^[a-z]$")
+
+# Map folder names to their singular form (for display/description)
+FOLDER_TO_SINGULAR = {
+    "cores": "core",
+    "managers": "manager",
+    "utils": "util",
+    "plugins": "plugin",
+    "mcps": "mcp",
+}
+
+# Reverse mapping
+SINGULAR_TO_FOLDER = {v: k for k, v in FOLDER_TO_SINGULAR.items()}
 
 
 def validate_module_name(name: str) -> None:
@@ -52,6 +64,22 @@ def validate_module_name(name: str) -> None:
         )
 
 
+def get_folder_for_type(type_name: str) -> str:
+    """Convert singular type name to plural folder name.
+    
+    Args:
+        type_name: Type name like 'manager', 'util', 'mcp', etc.
+        
+    Returns:
+        Folder name like 'managers', 'utils', 'mcps', etc.
+    """
+    if type_name in SINGULAR_TO_FOLDER:
+        return SINGULAR_TO_FOLDER[type_name]
+    if type_name in MODULE_FOLDERS:
+        return type_name
+    raise ADHDError(f"Unknown module type: {type_name}")
+
+
 # ============================================================================
 # TEMPLATE LOADING
 # Templates are loaded from data/templates/ directory
@@ -70,12 +98,26 @@ def _load_template(name: str) -> str:
 
 @dataclass
 class ModuleCreationParams:
+    """Parameters for creating a new module.
+    
+    Attributes:
+        module_name: Name of the module (snake_case)
+        folder: Target folder ('cores', 'managers', 'utils', 'plugins', 'mcps')
+        layer: Module layer ('foundation', 'runtime', 'dev')
+        is_mcp: Whether this is an MCP module (enables MCP scaffolding)
+        description: Optional module description
+        repo_options: Optional GitHub repo creation options
+        shows_in_workspace: Override for workspace visibility
+        create_instructions: Whether to create .instructions.md file
+    """
     module_name: str
-    module_type: str  # core/manager/plugin/util/mcp
-    description: str = ""  # Optional module description
+    folder: str  # cores/managers/plugins/utils/mcps
+    layer: str = "runtime"  # foundation/runtime/dev
+    is_mcp: bool = False
+    description: str = ""
     repo_options: Optional[RepoCreationOptions] = None
     shows_in_workspace: Optional[bool] = None
-    create_instructions: bool = False  # Whether to create .instructions.md file
+    create_instructions: bool = False
 
 
 def _to_class_name(name: str) -> str:
@@ -122,8 +164,8 @@ class ModuleCreator:
         if params.create_instructions:
             self._write_instructions(target, params)
         
-        # Handle module-type-specific files
-        if params.module_type == "mcp":
+        # Handle MCP-specific files (based on is_mcp flag, not folder)
+        if params.is_mcp:
             mcp_creator = McpModCreator(logger=self.logger)
             mcp_creator.create_mcp_files(target, params.module_name)
 
@@ -142,13 +184,14 @@ class ModuleCreator:
     
     def _prepare_target_path(self, params: ModuleCreationParams) -> Path:
         """Prepare the target directory path for the new module."""
-        modules_types = ModuleTypes()
-        module_type_info = modules_types.get_module_type(params.module_type)
-        directory_name = module_type_info.plural_name
-        if not directory_name:
-            raise ADHDError(f"Module type '{params.module_type}' not recognized in configuration.")
+        # Validate folder
+        if params.folder not in MODULE_FOLDERS:
+            raise ADHDError(
+                f"Invalid folder '{params.folder}'. "
+                f"Valid folders: {MODULE_FOLDERS}"
+            )
 
-        modules_root = Path(f"./{directory_name}").resolve()
+        modules_root = Path(f"./{params.folder}").resolve()
         modules_root.mkdir(parents=True, exist_ok=True)
         target = (modules_root / params.module_name).resolve()
         target.mkdir(parents=True, exist_ok=True)
@@ -158,19 +201,28 @@ class ModuleCreator:
 
     def _get_template_vars(self, params: ModuleCreationParams) -> dict:
         """Get common template variables for file generation."""
-        modules_types = ModuleTypes()
-        module_type_info = modules_types.get_module_type(params.module_type)
+        # Get singular form for description
+        singular_type = FOLDER_TO_SINGULAR.get(params.folder, params.folder)
         return {
             "module_name": params.module_name,
-            "module_type": params.module_type,
-            "module_type_plural": module_type_info.plural_name,
+            "folder": params.folder,
+            "layer": params.layer,
+            "is_mcp": params.is_mcp,
+            "mcp_flag": "true" if params.is_mcp else "",
             "class_name": _to_class_name(params.module_name),
-            "description": params.description or f"A {params.module_type} module for ADHD Framework.",
+            "description": params.description or f"A {singular_type} module for ADHD Framework.",
         }
 
     def _write_pyproject_toml(self, target: Path, params: ModuleCreationParams) -> None:
         """Generate pyproject.toml for new module."""
         vars = self._get_template_vars(params)
+        
+        # Build [tool.adhd] section dynamically
+        adhd_section = f'layer = "{params.layer}"'
+        if params.is_mcp:
+            adhd_section += "\nmcp = true"
+        vars["adhd_section"] = adhd_section
+        
         template = _load_template("pyproject.toml.template")
         content = template.format(**vars)
         (target / "pyproject.toml").write_text(content, encoding="utf-8")
@@ -191,7 +243,7 @@ class ModuleCreator:
     def _write_main_py(self, target: Path, params: ModuleCreationParams) -> None:
         """Generate main module file."""
         # MCP modules have their own main file generation
-        if params.module_type == "mcp":
+        if params.is_mcp:
             return
         
         main_py = target / f"{params.module_name}.py"

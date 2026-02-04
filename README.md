@@ -3,9 +3,9 @@
 Compact scaffolder for ADHD Framework modules with optional GitHub repository bootstrap and template cloning.
 
 ## Overview
-- Normalizes module names/types via the interactive wizard powered by Questionary Core
+- Normalizes module names and folder selection via the interactive wizard powered by Questionary Core
 - Clones optional templates and removes their `.git` metadata before writing new files
-- Writes `init.yaml`, README stub, and `__init__.py` tailored to the selected module type
+- Writes `pyproject.toml` with `[tool.adhd]` metadata, README stub, and `__init__.py` for the selected folder
 - Integrates with Github API Core + Creator Common Core to provision remote repos and push the first commit
 
 ## Features
@@ -24,7 +24,8 @@ from cores.creator_common_core.creator_common_core import RepoCreationOptions
 
 params = ModuleParams(
 	module_name="github_sync",
-	module_type="core",
+	folder="cores",
+	layer="runtime",
 	repo_options=RepoCreationOptions(owner="my-org", visibility="private"),
 	template_url="https://github.com/org/module-template",
 )
@@ -53,7 +54,8 @@ run_module_creation_wizard(
 @dataclass
 class ModuleParams:
 	module_name: str
-	module_type: str  # core | manager | plugin | util | mcp
+	folder: str       # cores | managers | plugins | utils | mcps
+	layer: str        # foundation | runtime | dev
 	repo_options: RepoCreationOptions | None = None
 	template_url: str | None = None
 
@@ -65,8 +67,8 @@ def run_module_creation_wizard(*, prompter: QuestionaryCore, logger: Logger) -> 
 ```
 
 ## Notes
-- The wizard reads module types and template locations from `main_config`; keep that file in sync with project data.
-- `ModuleCreator` always writes `init.yaml` with `folder_path`, version `0.0.1`, requirements stub, and `repo_url` when available.
+- The wizard reads folder options and template locations from `main_config`; keep that file in sync with project data.
+- `ModuleCreator` writes `pyproject.toml` with `[tool.adhd]` containing `layer` and optional `mcp = true` for MCP servers.
 - Template cloning removes `.git` folders so the new repo starts with a clean history.
 
 ## Requirements & prerequisites
@@ -75,10 +77,10 @@ def run_module_creation_wizard(*, prompter: QuestionaryCore, logger: Logger) -> 
 - ConfigManager must be initialized so module type mappings and data paths are available
 
 ## Troubleshooting
-- **“Module type '...' not recognized”** – ensure the type exists under `main_config.module_types_singular`.
-- **Template selection shows only “Blank”** – verify `project/data/module_creator_core/module_templates.yaml` exists and contains entries.
+- **"Invalid folder '...'"** – ensure the folder is one of: `cores`, `managers`, `plugins`, `utils`, `mcps`.
+- **Template selection shows only "Blank"** – verify `project/data/module_creator_core/module_templates.yaml` exists and contains entries.
 - **Remote repo creation failed** – confirm GitHub CLI authentication and that you have rights to the selected owner.
-- **`repo_url` missing in init.yaml** – repository owner must be provided; otherwise the URL is omitted by design.
+- **`repo_url` missing in pyproject.toml** – repository owner must be provided; otherwise the URL is omitted by design.
 
 ## Module structure
 

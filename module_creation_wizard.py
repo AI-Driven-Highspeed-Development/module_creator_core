@@ -10,22 +10,45 @@ from creator_common_core import (
 from questionary_core import QuestionaryCore
 from logger_util import Logger
 from exceptions_core import ADHDError
-from .module_types import ModuleTypes
+from modules_controller_core import ModuleLayer
 
-from .module_creator import ModuleCreator, ModuleCreationParams
+from .module_creator import (
+    ModuleCreator, 
+    ModuleCreationParams,
+    FOLDER_TO_SINGULAR,
+    SINGULAR_TO_FOLDER,
+)
 
 
 @dataclass
 class ModuleWizardArgs:
     """Pre-filled arguments for module creation wizard."""
     name: Optional[str] = None
-    module_type: Optional[str] = None
+    module_type: Optional[str] = None  # Singular: manager, util, plugin, mcp, core
     description: Optional[str] = None  # Optional module description
     create_instructions: Optional[bool] = None  # Whether to create .instructions.md
     # DEPRECATED_P3: template no longer used - embedded templates only
     create_repo: Optional[bool] = None  # None = ask, True = yes, False = no
     owner: Optional[str] = None
     visibility: Optional[str] = None  # "public" or "private"
+
+
+# Available module types (singular form for UI)
+MODULE_TYPES = list(FOLDER_TO_SINGULAR.values())
+
+# Default layer mapping by folder
+FOLDER_LAYER_DEFAULTS = {
+    "cores": "foundation",
+    "utils": "foundation",
+    "managers": "runtime",
+    "plugins": "runtime",
+    "mcps": "dev",
+}
+
+
+def _infer_layer_from_folder(folder: str) -> str:
+    """Infer default layer from folder name."""
+    return FOLDER_LAYER_DEFAULTS.get(folder, "runtime")
 
 
 def run_module_creation_wizard(
@@ -48,10 +71,8 @@ def run_module_creation_wizard(
     if prefilled is None:
         prefilled = ModuleWizardArgs()
 
-    types: list[str] = ModuleTypes().get_all_type_names()
-    if not types:
-        logger.error("No module types found in ModuleTypes registry.")
-        return
+    # Use defined module types (singular form)
+    types = MODULE_TYPES.copy()
 
     # Reorder types: move "core" to the end (cores are advanced/internal)
     if "core" in types:
@@ -127,9 +148,18 @@ def run_module_creation_wizard(
         return
 
     # 3) Create the module using embedded templates
+    # Convert singular type to folder name (e.g., 'manager' -> 'managers')
+    folder = SINGULAR_TO_FOLDER.get(module_type, module_type)
+    is_mcp = module_type == "mcp"
+    
+    # Infer default layer from folder
+    layer = _infer_layer_from_folder(folder)
+    
     params = ModuleCreationParams(
         module_name=module_name,
-        module_type=module_type,
+        folder=folder,
+        layer=layer,
+        is_mcp=is_mcp,
         description=description,
         repo_options=repo_options,
         create_instructions=create_instructions,
