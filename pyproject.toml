@@ -10,8 +10,6 @@ dependencies = [
     "exceptions-core",
     "github-api-core",
     "modules-controller-core",
-    "questionary-core",
-    "yaml-reading-core",
 ]
 
 [project.urls]

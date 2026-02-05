@@ -12,7 +12,10 @@ from creator_common_core import (
     RepoCreationOptions,
     create_remote_repo,
 )
-from modules_controller_core import MODULE_FOLDERS
+from modules_controller_core import (
+    MODULES_DIR,
+    LAYER_SUBFOLDERS,
+)
 from .mcps_mod import McpModCreator
 
 
@@ -24,19 +27,6 @@ from .mcps_mod import McpModCreator
 # Valid module name pattern: lowercase letters, numbers, underscores
 # Must start with letter, can't end with underscore
 MODULE_NAME_PATTERN = re.compile(r"^[a-z][a-z0-9_]*[a-z0-9]$|^[a-z]$")
-
-# Map folder names to their singular form (for display/description)
-FOLDER_TO_SINGULAR = {
-    "cores": "core",
-    "managers": "manager",
-    "utils": "util",
-    "plugins": "plugin",
-    "mcps": "mcp",
-}
-
-# Reverse mapping
-SINGULAR_TO_FOLDER = {v: k for k, v in FOLDER_TO_SINGULAR.items()}
-
 
 def validate_module_name(name: str) -> None:
     """Validate module name format before any file operations.
@@ -64,22 +54,6 @@ def validate_module_name(name: str) -> None:
         )
 
 
-def get_folder_for_type(type_name: str) -> str:
-    """Convert singular type name to plural folder name.
-    
-    Args:
-        type_name: Type name like 'manager', 'util', 'mcp', etc.
-        
-    Returns:
-        Folder name like 'managers', 'utils', 'mcps', etc.
-    """
-    if type_name in SINGULAR_TO_FOLDER:
-        return SINGULAR_TO_FOLDER[type_name]
-    if type_name in MODULE_FOLDERS:
-        return type_name
-    raise ADHDError(f"Unknown module type: {type_name}")
-
-
 # ============================================================================
 # TEMPLATE LOADING
 # Templates are loaded from data/templates/ directory
@@ -102,8 +76,7 @@ class ModuleCreationParams:
     
     Attributes:
         module_name: Name of the module (snake_case)
-        folder: Target folder ('cores', 'managers', 'utils', 'plugins', 'mcps')
-        layer: Module layer ('foundation', 'runtime', 'dev')
+        layer: Module layer ('foundation', 'runtime', 'dev') - determines folder
         is_mcp: Whether this is an MCP module (enables MCP scaffolding)
         description: Optional module description
         repo_options: Optional GitHub repo creation options
@@ -111,8 +84,7 @@ class ModuleCreationParams:
         create_instructions: Whether to create .instructions.md file
     """
     module_name: str
-    folder: str  # cores/managers/plugins/utils/mcps
-    layer: str = "runtime"  # foundation/runtime/dev
+    layer: str = "runtime"  # foundation/runtime/dev - this IS the folder
     is_mcp: bool = False
     description: str = ""
     repo_options: Optional[RepoCreationOptions] = None
@@ -183,15 +155,19 @@ class ModuleCreator:
     # ---------------- Path Preparation ----------------
     
     def _prepare_target_path(self, params: ModuleCreationParams) -> Path:
-        """Prepare the target directory path for the new module."""
-        # Validate folder
-        if params.folder not in MODULE_FOLDERS:
+        """Prepare the target directory path for the new module.
+        
+        Creates module at: modules/{layer}/{module_name}/
+        """
+        # Validate layer
+        if params.layer not in LAYER_SUBFOLDERS:
             raise ADHDError(
-                f"Invalid folder '{params.folder}'. "
-                f"Valid folders: {MODULE_FOLDERS}"
+                f"Invalid layer '{params.layer}'. "
+                f"Valid layers: {LAYER_SUBFOLDERS}"
             )
 
-        modules_root = Path(f"./{params.folder}").resolve()
+        # modules/{layer}/{module_name}/
+        modules_root = Path(f"./{MODULES_DIR}/{params.layer}").resolve()
         modules_root.mkdir(parents=True, exist_ok=True)
         target = (modules_root / params.module_name).resolve()
         target.mkdir(parents=True, exist_ok=True)
@@ -201,16 +177,15 @@ class ModuleCreator:
 
     def _get_template_vars(self, params: ModuleCreationParams) -> dict:
         """Get common template variables for file generation."""
-        # Get singular form for description
-        singular_type = FOLDER_TO_SINGULAR.get(params.folder, params.folder)
+        # Determine module kind for description (MCP or layer-based)
+        module_kind = "MCP" if params.is_mcp else params.layer
         return {
             "module_name": params.module_name,
-            "folder": params.folder,
             "layer": params.layer,
             "is_mcp": params.is_mcp,
             "mcp_flag": "true" if params.is_mcp else "",
             "class_name": _to_class_name(params.module_name),
-            "description": params.description or f"A {singular_type} module for ADHD Framework.",
+            "description": params.description or f"A {module_kind} module for ADHD Framework.",
         }
 
     def _write_pyproject_toml(self, target: Path, params: ModuleCreationParams) -> None:

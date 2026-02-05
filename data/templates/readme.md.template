@@ -1,6 +1,6 @@
 # {module_name}
 
-**Type:** {module_type}
+**Layer:** {layer}
 
 ## Description
 
@@ -28,7 +28,7 @@ result = instance.example_method()
 
 ```bash
 # Run module directly for testing
-uv run python -m {module_type_plural}.{module_name}.{module_name}
+uv run python -m {module_name}.{module_name}
 ```
 
 ## Configuration

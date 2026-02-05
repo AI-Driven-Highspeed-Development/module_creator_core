@@ -6,17 +6,15 @@ from typing import Optional
 from creator_common_core import (
     RepoCreationOptions,
     to_snake_case,
+    QuestionaryCore,
 )
-from questionary_core import QuestionaryCore
 from logger_util import Logger
 from exceptions_core import ADHDError
-from modules_controller_core import ModuleLayer
+from modules_controller_core import LAYER_SUBFOLDERS
 
 from .module_creator import (
     ModuleCreator, 
     ModuleCreationParams,
-    FOLDER_TO_SINGULAR,
-    SINGULAR_TO_FOLDER,
 )
 
 
@@ -24,7 +22,8 @@ from .module_creator import (
 class ModuleWizardArgs:
     """Pre-filled arguments for module creation wizard."""
     name: Optional[str] = None
-    module_type: Optional[str] = None  # Singular: manager, util, plugin, mcp, core
+    layer: Optional[str] = None  # foundation, runtime, dev
+    is_mcp: Optional[bool] = None  # Whether to create an MCP module
     description: Optional[str] = None  # Optional module description
     create_instructions: Optional[bool] = None  # Whether to create .instructions.md
     # DEPRECATED_P3: template no longer used - embedded templates only
@@ -33,22 +32,12 @@ class ModuleWizardArgs:
     visibility: Optional[str] = None  # "public" or "private"
 
 
-# Available module types (singular form for UI)
-MODULE_TYPES = list(FOLDER_TO_SINGULAR.values())
-
-# Default layer mapping by folder
-FOLDER_LAYER_DEFAULTS = {
-    "cores": "foundation",
-    "utils": "foundation",
-    "managers": "runtime",
-    "plugins": "runtime",
-    "mcps": "dev",
+# Layer descriptions for wizard
+LAYER_DESCRIPTIONS = {
+    "foundation": "Bootstrap modules - core infrastructure, no ADHD deps",
+    "runtime": "Production modules - most modules go here (default)",
+    "dev": "Development tools - testing, debugging, build utilities",
 }
-
-
-def _infer_layer_from_folder(folder: str) -> str:
-    """Infer default layer from folder name."""
-    return FOLDER_LAYER_DEFAULTS.get(folder, "runtime")
 
 
 def run_module_creation_wizard(
@@ -59,7 +48,7 @@ def run_module_creation_wizard(
 ) -> None:
     """Interactive flow to scaffold a new module using embedded templates.
 
-    - Prompts for module name and type
+    - Prompts for module name, layer, and MCP flag
     - Optionally creates a GitHub repo
     - Generates module files from embedded templates
     
@@ -71,14 +60,7 @@ def run_module_creation_wizard(
     if prefilled is None:
         prefilled = ModuleWizardArgs()
 
-    # Use defined module types (singular form)
-    types = MODULE_TYPES.copy()
-
-    # Reorder types: move "core" to the end (cores are advanced/internal)
-    if "core" in types:
-        types = [t for t in types if t != "core"] + ["core"]
-
-    # 1) Ask for module name and type
+    # 1) Ask for module name, layer, and MCP flag
     try:
         # Module name
         if prefilled.name:
@@ -95,33 +77,33 @@ def run_module_creation_wizard(
             if module_name != raw_name:
                 logger.info(f"Module name normalized to '{module_name}'")
 
-        # Module type
-        if prefilled.module_type:
-            if prefilled.module_type not in types:
-                logger.error(f"Invalid module type '{prefilled.module_type}'. Valid types: {', '.join(types)}")
+        # Layer selection
+        if prefilled.layer:
+            if prefilled.layer not in LAYER_SUBFOLDERS:
+                logger.error(f"Invalid layer '{prefilled.layer}'. Valid layers: {', '.join(LAYER_SUBFOLDERS)}")
                 return
-            module_type = prefilled.module_type
+            layer = prefilled.layer
         else:
-            module_type = prompter.multiple_choice(
-                "Module type",
-                types,
-                default=types[0],
+            # Build layer choices with descriptions
+            layer_choices = [f"{layer} - {LAYER_DESCRIPTIONS.get(layer, '')}" for layer in LAYER_SUBFOLDERS]
+            layer_choice = prompter.multiple_choice(
+                "Module layer (determines when module loads)",
+                layer_choices,
+                default=layer_choices[1],  # runtime is default
             )
+            # Extract layer from choice ("runtime - Production modules..." -> "runtime")
+            layer = layer_choice.split(" - ")[0]
 
-        # Warn user if they select "core" type
-        if module_type == "core":
-            logger.warning(
-                "⚠️  Cores are internal framework components. "
-                "Only create a core if you're extending the ADHD framework itself."
+        # MCP flag
+        if prefilled.is_mcp is not None:
+            is_mcp = prefilled.is_mcp
+        else:
+            mcp_choice = prompter.multiple_choice(
+                "Is this an MCP (Model Context Protocol) module for AI agents?",
+                ["No", "Yes"],
+                default="No",
             )
-            confirm = prompter.multiple_choice(
-                "Are you sure you want to create a core module?",
-                ["Yes, I understand", "No, go back"],
-                default="No, go back",
-            )
-            if confirm != "Yes, I understand":
-                logger.info("Core creation cancelled. Please restart and select a different module type.")
-                return
+            is_mcp = mcp_choice == "Yes"
         
         # Optional description
         description = prefilled.description or ""
@@ -148,16 +130,8 @@ def run_module_creation_wizard(
         return
 
     # 3) Create the module using embedded templates
-    # Convert singular type to folder name (e.g., 'manager' -> 'managers')
-    folder = SINGULAR_TO_FOLDER.get(module_type, module_type)
-    is_mcp = module_type == "mcp"
-    
-    # Infer default layer from folder
-    layer = _infer_layer_from_folder(folder)
-    
     params = ModuleCreationParams(
         module_name=module_name,
-        folder=folder,
         layer=layer,
         is_mcp=is_mcp,
         description=description,
